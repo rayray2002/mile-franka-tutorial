@@ -25,7 +25,7 @@ CONTROLLER_NAME = "custom_cartesian_impedance_controller"  # sim==real
 GET_BODY_STATE_SRV = "/get_body_state"
 SET_BODY_STATE_SRV = "/set_body_state"
 SET_PAUSE_SRV = "/set_pause"
-GRASP_ACTION = "/panda_gripper_sim_node/grasp"  # sim gripper; real = franka_gripper_node/grasp
+GRASP_ACTION = "/panda_gripper_sim_node/grasp"  # sim gripper; real (multipanda) = /panda_gripper/grasp
 EE_BODY = "panda_hand"  # used only if EE_CURR_TOPIC is unavailable (sim fallback)
 # move_to_start exists ONLY in the real controller config (not the sim config); used for the
 # real wrist-down joint-space home. See config.Q_HOME and envs/registration.py.

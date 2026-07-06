@@ -119,11 +119,12 @@ def _build_real_env(config: Optional[StackTaskConfig] = None,
     apply_sim_gains = os.environ.get("MILE_APPLY_SIM_GAINS", "0").lower() in ("1", "true", "yes")
 
     # Gripper action namespace differs by stack: the franka_ros2 gripper node comes up as
-    # `franka_gripper` (empty namespace) -> /franka_gripper/grasp, while multipanda_ros2's is
-    # franka_gripper_node -> /franka_gripper_node/grasp. MILE_GRASP_ACTION overrides either.
+    # `franka_gripper` (empty namespace) -> /franka_gripper/grasp, while this lab's
+    # multipanda_ros2 bringup names it `panda_gripper` -> /panda_gripper/grasp (confirmed via
+    # `ros2 action list` against realtime_franka_humble). MILE_GRASP_ACTION overrides either.
     grasp_action = os.environ.get(
         "MILE_GRASP_ACTION",
-        "/franka_gripper/grasp" if use_fr3_pose else "/franka_gripper_node/grasp")
+        "/franka_gripper/grasp" if use_fr3_pose else "/panda_gripper/grasp")
     # Action name differs by stack; override with MILE_ERROR_RECOVERY_ACTION.
     error_recovery_action = os.environ.get(
         "MILE_ERROR_RECOVERY_ACTION",
