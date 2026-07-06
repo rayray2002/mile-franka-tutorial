@@ -60,7 +60,7 @@ from mile_franka.pose.base import ObjectPoseSource
 # tag36h11 ids from scripts/generate_cube_tags.py: 0 = bottom, 1 = top. apriltag_ros names
 # each tag's tf frame "<family>:<id>" (configurable in config/apriltag.yaml).
 TAG_FAMILY = "tag36h11"
-TAG_SIZE_M = 0.042  # measured black-border edge of the mounted tag (m); matches config/apriltag.yaml
+TAG_SIZE_M = 0.043  # measured black-border edge of the mounted tag (m); matches config/apriltag.yaml
 CUBE_TAG_IDS = {BOTTOM_CUBE: 0, TOP_CUBE: 1}
 CUBE_TAG_FRAMES = {name: f"{TAG_FAMILY}:{i}" for name, i in CUBE_TAG_IDS.items()}
 CAMERA_OPTICAL_FRAME = "camera_color_optical_frame"

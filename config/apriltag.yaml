@@ -3,12 +3,12 @@
 apriltag:
   ros__parameters:
     family: 36h11
-    size: 0.042            # measured black-border edge of the mounted tag (m)
+    size: 0.043            # measured black-border edge of the mounted tag (m)
     max_hamming: 1         # allow 1-bit error correction (safe for 36h11's large Hamming distance)
     detector:
       threads: 2
       decimate: 1.0        # 1.0 = no downsampling. 2.0 halved the ~33px tag to ~16px (undetectable);
-                           # the 3.6cm tags need full resolution to clear ~5-6 px/cell decode threshold.
+                           # the 4.3cm tags need full resolution to clear ~5-6 px/cell decode threshold.
     tag:
       ids: [0, 1]
       frames: ["tag36h11:0", "tag36h11:1"]
