@@ -12,12 +12,16 @@ CLOSE_WIDTH ?= 0.0
 OPEN_WIDTH  ?= 0.08
 # Resolve which gripper action is live and bail if none found.
 GRIP_NS = ns=$$(ros2 action list 2>/dev/null | grep -E "/grasp$$" | head -1 | sed "s|/grasp||"); if [ -z "$$ns" ]; then echo "No gripper action server found -- is the controller/sim running?"; exit 1; fi; echo "gripper: $$ns"
-MILE_CAMERA     ?= realsense                 ## camera driver: realsense (default) or webcam (USB/UVC, e.g. Logitech)
-FRANKA_CTR      ?= franka_ros2_humble        ## fr3 controller container name
-MULTIPANDA_CTR  ?= multipanda_ros2_controller_1  ## hucebot multipanda container name; override if yours differs
+MILE_CAMERA     ?= webcam                 ## camera driver: realsense (default) or webcam (USB/UVC, e.g. Logitech)
+FRANKA_CTR      ?= multipanda_ros2        ## fr3 controller container name
+MULTIPANDA_CTR  ?= realtime_franka_humble  ## hucebot multipanda container name; override if yours differs
 ROBOT_IP        ?= 169.254.202.10
 LOAD_GRIPPER    ?= true
-FRANKA_SRC      := source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+# ROS2 workspace path inside each controller container -- override if yours differs.
+FRANKA_WS       ?= /ros2_ws                  ## workspace path inside $(FRANKA_CTR)
+MULTIPANDA_WS   ?= /home/user/humble_ws      ## workspace path inside $(MULTIPANDA_CTR)
+FRANKA_SRC       = source /opt/ros/humble/setup.bash && source $(strip $(FRANKA_WS))/install/setup.bash && export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+MULTIPANDA_SRC   = source /opt/ros/humble/setup.bash && source $(strip $(MULTIPANDA_WS))/install/setup.bash && export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 # tutorial-teleop and tutorial-collect-train need keyboard/stdin (pygame window,
 # keyboard intervener) and must be run from inside `make shell`. The guard below enforces this.
@@ -108,9 +112,9 @@ eval-mile:                   ## Part 3: evaluate the MILE-trained policy in sim 
 # ── Tutorial: Part 4 — Real FR3 ───────────────────────────────────────────────
 # All callable from the host via docker exec.
 
-franka-up:                   ## launch / verify the real controller stack; MILE_REAL_STACK=fr3 (default) starts mile_bringup in franka_ros2_humble; =multipanda just checks hucebot's multipanda_ros2 container is up; override ROBOT_IP=.. LOAD_GRIPPER=false
+franka-up:                   ## launch / verify the real controller stack; MILE_REAL_STACK=fr3 (default) starts mile_bringup in $(FRANKA_CTR); =multipanda just checks $(MULTIPANDA_CTR) is up (nothing launched from here); override ROBOT_IP=.. LOAD_GRIPPER=false MULTIPANDA_CTR=..
 	@if [ "$${MILE_REAL_STACK:-fr3}" = "multipanda" ]; then \
-	  docker ps --format '{{.Names}}' | grep -q "$(MULTIPANDA_CTR)" \
+	  docker ps --format '{{.Names}}' | grep -qx "$(strip $(MULTIPANDA_CTR))" \
 	    || { echo "Container $(MULTIPANDA_CTR) not running -- start it: docker compose -f ~/multipanda_ros2/docker-compose.yml up -d"; exit 1; }; \
 	  echo "multipanda controller running ($(MULTIPANDA_CTR)) — nothing to launch from here"; \
 	else \
@@ -170,9 +174,9 @@ view-twin:                   ## live MuJoCo digital twin of the real workspace (
 calibrate-camera:            ## eye-to-hand camera calibration → MJPEG preview at http://localhost:8080 (needs controller + apriltag-up); MILE_REAL_STACK=fr3|multipanda (default fr3)
 	$(DC) exec -e MILE_REAL_STACK=$${MILE_REAL_STACK:-fr3} -e MILE_CAMERA_CALIB -e PYTHONUNBUFFERED=1 sim bash -lc '$(ENVSH) && python3 -u scripts/calibrate_camera.py'
 
-franka-shell:                ## shell in the controller container; MILE_REAL_STACK=fr3 (default) → franka_ros2_humble, =multipanda → multipanda_ros2_controller_1
+franka-shell:                ## shell in the controller container; MILE_REAL_STACK=fr3 (default) → $(FRANKA_CTR), =multipanda → $(MULTIPANDA_CTR); override FRANKA_WS/MULTIPANDA_WS if the workspace path differs
 	@if [ "$${MILE_REAL_STACK:-fr3}" = "multipanda" ]; then \
-	  docker exec -it $(MULTIPANDA_CTR) bash -lc '$(FRANKA_SRC) && exec bash'; \
+	  docker exec -it $(MULTIPANDA_CTR) bash -lc '$(MULTIPANDA_SRC) && exec bash'; \
 	else \
 	  docker exec -it $(FRANKA_CTR) bash -lc '$(FRANKA_SRC) && exec bash'; \
 	fi
