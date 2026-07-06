@@ -80,7 +80,7 @@ make mile               # iterative MILE run (sim, joystick intervener)
 make pose-test          # 20 pose-layer unit tests (no ROS/hardware needed)
 make joystick-check     # verify gamepad reads inside the container
 make view-twin          # live MuJoCo digital twin from AprilTag + joint states
-make apriltag-up        # launch D415 + apriltag_ros + calibration static tf
+make apriltag-up        # launch camera + apriltag_ros + calibration static tf (MILE_CAMERA=realsense|webcam, default realsense)
 make calibrate-camera   # eye-to-hand calibration → config/camera_calib.yaml
 make franka-up          # start the real FR3 controller (franka_ros2 container)
 make mile-real          # iterative MILE on the real FR3
