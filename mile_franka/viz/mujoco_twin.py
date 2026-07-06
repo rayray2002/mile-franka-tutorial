@@ -6,12 +6,16 @@ joint-name->qpos mapping, scene injection) is unit-testable without hardware.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 from typing import List, Sequence, Tuple
 
 import numpy as np
 
 from mile_franka.pose.base import Pose
+
+_POSITION_TAG_RE = re.compile(r"<position\b[^>]*>")
+_KV_ATTR_RE = re.compile(r'\s+kv="[^"]*"')
 
 
 def pose_to_freejoint_qpos(pose: Pose) -> np.ndarray:
@@ -82,6 +86,26 @@ def _franka_description_franka_dir() -> str:
                         "mujoco", "franka")
 
 
+def _write_2_3_7_compatible_panda(src_panda: str, dest_panda: str) -> None:
+    """Copy franka_description's panda.xml with <position> actuators' `kv`
+    attribute stripped, and write it to dest_panda.
+
+    MuJoCo only added `kv` (velocity damping) to <position> actuators in 3.0;
+    the twin viewer runs pip mujoco==2.3.7 (pinned for MetaWorld-v2 compat, see
+    docker/requirements-mile.txt) and fails to parse newer franka_description
+    builds that set it ("Schema violation: unrecognized attribute: 'kv'"). The
+    real sim (mujoco_ros, C++) uses a newer MuJoCo and loads the untouched
+    panda.xml directly (see scripts/sim_up.sh) -- this sanitized copy only
+    feeds the Python twin viewer. <velocity> actuators keep their own `kv`
+    (gain, valid since 2.3.7); only <position>'s newer damping term is dropped.
+    """
+    with open(src_panda) as f:
+        txt = f.read()
+    patched = _POSITION_TAG_RE.sub(lambda m: _KV_ATTR_RE.sub("", m.group(0)), txt)
+    with open(dest_panda, "w") as f:
+        f.write(patched)
+
+
 def resolve_scene_path() -> str:
     """Copy the stacking scene + objects beside franka_description's panda.xml and
     return the scene path.
@@ -89,10 +113,27 @@ def resolve_scene_path() -> str:
     The scene uses relative includes (panda.xml, meshdir="assets"), so it must sit
     in that directory at load time. scripts/sim_up.sh does this for the sim; the
     real-robot path never runs sim_up.sh, so the twin repeats the injection here.
+
+    The twin's copy of the scene points at a version of panda.xml sanitized for
+    mujoco 2.3.7 (see _write_2_3_7_compatible_panda) instead of the original, so
+    the sim's copies of stacking_scene.xml/panda.xml (loaded by a different,
+    newer MuJoCo build) are left untouched.
     """
     dest = _franka_description_franka_dir()
     src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            "..", "assets", "mujoco")
-    for fn in ("stacking_scene.xml", "stacking_objects.xml"):
-        shutil.copy(os.path.join(src_dir, fn), os.path.join(dest, fn))
-    return os.path.join(dest, "stacking_scene.xml")
+    shutil.copy(os.path.join(src_dir, "stacking_objects.xml"),
+                os.path.join(dest, "stacking_objects.xml"))
+
+    panda_compat = "panda_mujoco_2_3_7.xml"
+    _write_2_3_7_compatible_panda(os.path.join(dest, "panda.xml"),
+                                   os.path.join(dest, panda_compat))
+
+    with open(os.path.join(src_dir, "stacking_scene.xml")) as f:
+        scene_txt = f.read()
+    scene_txt = scene_txt.replace('<include file="panda.xml"/>',
+                                  f'<include file="{panda_compat}"/>')
+    scene_dest = os.path.join(dest, "stacking_scene_twin.xml")
+    with open(scene_dest, "w") as f:
+        f.write(scene_txt)
+    return scene_dest

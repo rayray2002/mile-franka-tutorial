@@ -71,9 +71,29 @@ def test_resolve_scene_path_copies_assets(tmp_path, monkeypatch):
     dest.mkdir(parents=True)
     # Stand in for the real franka_description location (avoids needing ament/ROS).
     monkeypatch.setattr(mt, "_franka_description_franka_dir", lambda: str(dest))
+    # franka_description ships panda.xml alongside its mujoco/franka assets; stub
+    # one with a <position kv=...> actuator, as newer builds emit.
+    (dest / "panda.xml").write_text(
+        '<mujoco model="panda">\n'
+        '  <actuator>\n'
+        '    <position name="panda_act_pos1" joint="panda_joint1" kp="10" kv="1"/>\n'
+        '    <velocity name="panda_act_vel1" joint="panda_joint1" kv="1"/>\n'
+        '  </actuator>\n'
+        '</mujoco>\n'
+    )
 
     scene = mt.resolve_scene_path()
 
-    assert scene == str(dest / "stacking_scene.xml")
-    assert (dest / "stacking_scene.xml").exists()
+    assert scene == str(dest / "stacking_scene_twin.xml")
+    assert (dest / "stacking_scene_twin.xml").exists()
     assert (dest / "stacking_objects.xml").exists()
+
+    # Position actuator's `kv` (unsupported pre-3.0) is stripped; kp and the
+    # velocity actuator's own kv are left alone.
+    compat_panda = (dest / "panda_mujoco_2_3_7.xml").read_text()
+    assert 'name="panda_act_pos1" joint="panda_joint1" kp="10"/>' in compat_panda
+    assert 'name="panda_act_vel1" joint="panda_joint1" kv="1"/>' in compat_panda
+
+    scene_txt = (dest / "stacking_scene_twin.xml").read_text()
+    assert '<include file="panda_mujoco_2_3_7.xml"/>' in scene_txt
+    assert '<include file="panda.xml"/>' not in scene_txt
