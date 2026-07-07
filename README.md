@@ -85,6 +85,7 @@ make calibrate-camera   # eye-to-hand calibration → config/camera_calib.yaml
 make franka-up          # start the real FR3 controller (franka_ros2 container)
 make mile-real          # iterative MILE on the real FR3
 make eval-real          # policy eval on the real FR3
+make eval-expert-real   # scripted expert (not a learned policy) eval on the real FR3
 ```
 
 ---

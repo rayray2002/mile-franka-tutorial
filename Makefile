@@ -4,7 +4,7 @@ ENVSH   := source scripts/in_container_env.sh
 RUN      = $(DC) exec sim bash -lc '$(ENVSH) && $(1)'
 RUND     = $(DC) exec -d sim bash -lc '$(ENVSH) && $(1)'
 # Kill any leftover process still publishing to the arm (prior run or stale rclpy context).
-KILLCLIENTS = self=$$$$; pgrep -f "train_mile.py|eval_base_policy_(sim|real)|eval_mile|franka_sim_rollout_record|build_base_policy|collect_synthetic_interventions" | grep -vx $$self | xargs -r kill 2>/dev/null; sleep 2; true
+KILLCLIENTS = self=$$$$; pgrep -f "train_mile.py|eval_base_policy_(sim|real)|eval_expert_real|eval_mile|franka_sim_rollout_record|build_base_policy|collect_synthetic_interventions" | grep -vx $$self | xargs -r kill 2>/dev/null; sleep 2; true
 TS      := $(shell date -u +%Y%m%dT%H%M%S)
 DEMOS   ?= output_dir/franka/sim_demos_mediocre.npz   ## base-policy input; override: make base-policy DEMOS=path.npz
 GRIP_FORCE  ?= 40
@@ -29,7 +29,7 @@ CONTAINER_GUARD = @test -d /home/user/mile-code || { echo "ERROR: Run 'make shel
   tutorial-metaworld eval-metaworld \
   tutorial-fake \
   sim-up sim-gui tutorial-teleop eval-base tutorial-collect-train eval-mile \
-  franka-up apriltag-up eval-real \
+  franka-up apriltag-up eval-real eval-expert-real \
   spacemouse-check joystick-check pose-test tune-cost \
   real-home-smoke close-gripper open-gripper view-tags view-twin calibrate-camera franka-shell \
   collect-mediocre collect-expert base-policy mile mile-real fetch-artifacts
@@ -124,6 +124,9 @@ apriltag-up:                 ## launch camera + apriltag_ros + calibration stati
 
 eval-real:                   ## Part 4: evaluate policy on the real FR3; MILE_REAL_STACK=fr3|multipanda (default fr3); MILE_APPLY_SIM_GAINS=1 to track against the lab sim
 	$(DC) exec -e DISPLAY=$$DISPLAY -e MILE_REAL_STACK=$${MILE_REAL_STACK:-fr3} -e MILE_CONTROLLER -e MILE_GRASP_ACTION -e MILE_APPLY_SIM_GAINS sim bash -lc '$(ENVSH) && echo "real stack=$${MILE_REAL_STACK:-fr3} RMW=$$RMW_IMPLEMENTATION"; $(KILLCLIENTS); python3 scripts/eval_base_policy_real.py'
+
+eval-expert-real:            ## evaluate the scripted expert policy (not a learned policy) on the real FR3; same prereqs as eval-real; MILE_REAL_STACK=fr3|multipanda (default fr3); MILE_APPLY_SIM_GAINS=1 to track against the lab sim; EPISODES/MAX_STEPS override defaults
+	$(DC) exec -e DISPLAY=$$DISPLAY -e MILE_REAL_STACK=$${MILE_REAL_STACK:-fr3} -e MILE_CONTROLLER -e MILE_GRASP_ACTION -e MILE_APPLY_SIM_GAINS sim bash -lc '$(ENVSH) && echo "real stack=$${MILE_REAL_STACK:-fr3} RMW=$$RMW_IMPLEMENTATION"; $(KILLCLIENTS); python3 scripts/eval_expert_real.py --episodes $${EPISODES:-5} --max_steps $${MAX_STEPS:-600}'
 
 # ── Debug / development ────────────────────────────────────────────────────────
 # Diagnostic and hardware-check tools. Not needed for the tutorial flow.
