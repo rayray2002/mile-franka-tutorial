@@ -5,9 +5,14 @@
 set -e
 source /home/user/mile-code/scripts/in_container_env.sh
 
-# Live window -> host X via mounted /tmp/.X11-unix. DISPLAY is inherited from `docker exec -e`.
-unset LIBGL_ALWAYS_SOFTWARE GALLIUM_DRIVER   # use the NVIDIA GL stack, not llvmpipe
+# Live window via X11. On Linux with a real host display, unset software-GL overrides so the
+# NVIDIA stack is used.  On macOS Docker (Xvfb :99), keep software GL so GLFW can open a window.
 : "${DISPLAY:?DISPLAY must be set (pass the host display via make sim-gui)}"
+if [ "${DISPLAY}" = ":99" ]; then
+    export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+else
+    unset LIBGL_ALWAYS_SOFTWARE GALLIUM_DRIVER
+fi
 
 # 0. Kill any prior sim launch so re-runs don't leave duplicate ROS2 nodes.
 pkill -f 'franka_sim_stacking' 2>/dev/null || true

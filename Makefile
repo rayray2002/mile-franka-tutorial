@@ -30,7 +30,7 @@ CONTAINER_GUARD = @test -d /home/user/mile-code || { echo "ERROR: Run 'make shel
 
 .PHONY: \
   build up down shell \
-  tutorial-check tutorial-check-loss \
+  tutorial-check tutorial-check-loss tutorial-check-intervention-model tutorial-check-scripted-intervener \
   tutorial-metaworld eval-metaworld \
   tutorial-fake \
   sim-up sim-gui tutorial-teleop eval-base tutorial-collect-train eval-mile \
@@ -63,6 +63,12 @@ tutorial-check:              ## assert imports + artifacts are present
 tutorial-check-loss:         ## run tests for the MILE-loss exercise
 	$(DC) exec sim bash -c 'cd /home/user/mile-code && python3 -m pytest tests/test_loss_exercise.py -v'
 
+tutorial-check-intervention-model: ## run tests for the intervention model exercise
+	$(DC) exec sim bash -c 'cd /home/user/mile-code && python3 -m pytest tests/test_intervention_model_exercise.py -v'
+
+tutorial-check-scripted-intervener: ## run tests for the scripted intervener exercise
+	$(DC) exec sim bash -c 'cd /home/user/mile-code && python3 -m pytest tests/test_scripted_intervener_exercise.py -v'
+
 # ── Tutorial: Part 1 — MetaWorld ──────────────────────────────────────────────
 # Interactive (needs stdin for training output). Run from inside make shell.
 
@@ -90,8 +96,16 @@ sim-up:                      ## launch the stacking sim headless (detached); wai
 	@echo "sim launching headless; give it ~10s"
 
 sim-gui:                     ## open a live MuJoCo viewer on the host display (host prereq: xhost +local:root)
-	@echo "Host prereq (once per login): xhost +local:root"
-	$(DC) exec -e DISPLAY=$$DISPLAY sim bash -lc '$(ENVSH) && bash scripts/sim_gui.sh'
+	@if [ "$$DISPLAY" != "$${DISPLAY#localhost:}" ] || [ "$$DISPLAY" != "$${DISPLAY#/}" ]; then \
+		docker exec -u root mile_sim bash -c \
+			'which x11vnc >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y -q x11vnc; }'; \
+		python3 scripts/view_twin_macos.py \
+			--viewer-cmd 'bash scripts/sim_gui.sh' \
+			--pkill-pattern franka_sim_stacking; \
+	else \
+		echo "Host prereq (once per login): xhost +local:root"; \
+		$(DC) exec -e DISPLAY=$$DISPLAY sim bash -lc '$(ENVSH) && bash scripts/sim_gui.sh'; \
+	fi
 
 tutorial-teleop:             ## Part 3 practice: free-play keyboard teleop in sim (Ctrl-C to exit; data not saved)
 	$(CONTAINER_GUARD)
@@ -169,14 +183,16 @@ view-tags:                   ## MJPEG stream with AprilTag overlay → http://lo
 	$(DC) exec -e MILE_REAL_STACK=$(MILE_REAL_STACK) -e MILE_CAMERA=$${MILE_CAMERA:-$(MILE_CAMERA)} sim bash -lc '$(ENVSH) && python3 -u scripts/view_camera_tags.py'
 
 view-twin:                   ## live MuJoCo digital twin of the real workspace (needs controller + apriltag-up; safe in parallel with mile-real/eval-real); MILE_REAL_STACK=fr3|multipanda (default multipanda); MILE_CAMERA=realsense|webcam (default: $(MILE_CAMERA))
-	@echo "Host prereq (once per login): xhost +local:root"
-	@if [ "$$DISPLAY" != "$${DISPLAY#localhost:}" ]; then \
-		echo "[view-twin] using host display :1 (SSH-forwarded $$DISPLAY unreachable from container)"; \
-		TWIN_DISPLAY=:1; \
+	@if [ "$$DISPLAY" != "$${DISPLAY#localhost:}" ] || [ "$$DISPLAY" != "$${DISPLAY#/}" ]; then \
+		docker exec -u root mile_sim bash -c \
+			'which x11vnc >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y -q x11vnc; }'; \
+		MILE_REAL_STACK=$(MILE_REAL_STACK) MILE_CAMERA=$${MILE_CAMERA:-$(MILE_CAMERA)} \
+			python3 scripts/view_twin_macos.py; \
 	else \
-		TWIN_DISPLAY=$$DISPLAY; \
-	fi; \
-	$(DC) exec -e DISPLAY=$$TWIN_DISPLAY -e MILE_REAL_STACK=$(MILE_REAL_STACK) -e MILE_CAMERA=$${MILE_CAMERA:-$(MILE_CAMERA)} sim bash -lc '$(ENVSH) && python3 scripts/view_cubes_mujoco.py'
+		echo "Host prereq (once per login): xhost +local:root"; \
+		$(DC) exec -e DISPLAY=$$DISPLAY -e MILE_REAL_STACK=$(MILE_REAL_STACK) -e MILE_CAMERA=$${MILE_CAMERA:-$(MILE_CAMERA)} sim \
+			bash -lc '$(ENVSH) && python3 scripts/view_cubes_mujoco.py'; \
+	fi
 
 calibrate-camera:            ## eye-to-hand camera calibration → MJPEG preview at http://localhost:8080 (needs controller + apriltag-up); MILE_REAL_STACK=fr3|multipanda (default multipanda); MILE_CAMERA=realsense|webcam (default: $(MILE_CAMERA)); board: CHECKER_SIZE/CHECKER_SQUARE/CHARUCO_MARKER/ARUCO_DICT (same vars as calibrate-intrinsics)
 	$(DC) exec -e MILE_REAL_STACK=$(MILE_REAL_STACK) -e MILE_CAMERA=$${MILE_CAMERA:-$(MILE_CAMERA)} -e MILE_CAMERA_CALIB -e PYTHONUNBUFFERED=1 sim bash -lc '$(ENVSH) && python3 -u scripts/calibrate_camera.py \
