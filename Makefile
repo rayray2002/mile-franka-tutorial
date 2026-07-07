@@ -30,7 +30,7 @@ CONTAINER_GUARD = @test -d /home/user/mile-code || { echo "ERROR: Run 'make shel
   tutorial-fake \
   sim-up sim-gui tutorial-teleop eval-base tutorial-collect-train eval-mile \
   franka-up apriltag-up eval-real \
-  spacemouse-check joystick-check pose-test tune-cost \
+  spacemouse-check joystick-check vive-check pose-test tune-cost \
   real-home-smoke close-gripper open-gripper view-tags view-twin calibrate-camera franka-shell \
   collect-mediocre collect-expert base-policy mile mile-real fetch-artifacts
 
@@ -133,6 +133,9 @@ spacemouse-check:            ## print live SpaceMouse deflection (Ctrl-C to stop
 
 joystick-check:              ## print live gamepad axes/buttons (Ctrl-C to stop)
 	$(call RUN,python3 scripts/joystick_check.py)
+
+vive-check:                   ## print live Vive controller position/buttons (Ctrl-C to stop)
+	$(call RUN,python3 scripts/vive_check.py)
 
 pose-test:                   ## run pose-layer unit tests (no ROS/hardware needed)
 	$(call RUN,python3 -m pytest tests/test_calibration.py tests/test_apriltag_pose.py tests/test_ros_posestamped.py -v)

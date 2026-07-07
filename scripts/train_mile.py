@@ -276,6 +276,12 @@ def iterative_training(config):
             from mile_franka.teleop.keyboard import KeyboardDevice
             kb_scale = config['experiment'].get('keyboard_translation_scale', 0.02)
             intervener = TeleopIntervener(KeyboardDevice(translation_scale=kb_scale))
+        elif which == 'vive':
+            from mile_franka.teleop.vive import ViveDevice
+            vive_scale = config['experiment'].get('vive_translation_scale', 1.0)
+            # HTC Vive wand: grip=segment toggle, menu=gripper toggle, trackpad=done,
+            # trigger=discard (see mile_franka/teleop/vive.py for the button mapping).
+            intervener = TeleopIntervener(ViveDevice(translation_scale=vive_scale))
         else:
             raise ValueError(f'Unknown intervener: {which}')
 

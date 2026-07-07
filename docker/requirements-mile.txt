@@ -19,3 +19,6 @@ moviepy
 # the focus-window "pygame" backend). The X11 backend pulls in python-xlib; needs a live
 # DISPLAY at runtime, not at import.
 pynput
+# ViveDevice's default reader (France-lab HTC Vive teleop); needs a running SteamVR at
+# import-call time, not at pip-install time.
+openvr
