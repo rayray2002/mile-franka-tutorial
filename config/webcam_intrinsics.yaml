@@ -1,0 +1,29 @@
+# Logitech C930e — NOMINAL placeholder, not a real calibration.
+# Derived from the datasheet's 90-degree diagonal FOV assuming square pixels,
+# a centered principal point, and zero lens distortion:
+#   f = (diag_px/2) / tan(90deg/2), diag_px = hypot(1920, 1080)
+# `make calibrate-intrinsics` attempts so far have either under-shot the real
+# FOV (poor board coverage) or diverged outright (degenerate samples
+# poisoning the solve). Replace this with a real calibration (COMMIT in the
+# GUI overwrites this file directly) once one converges cleanly with a low
+# reprojection RMS error.
+image_width: 1920
+image_height: 1080
+camera_name: default_cam
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [1101.5, 0, 960, 0, 1101.5, 540, 0, 0, 1]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [0, 0, 0, 0, 0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1, 0, 0, 0, 1, 0, 0, 0, 1]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [1101.5, 0, 960, 0, 0, 1101.5, 540, 0, 0, 0, 1, 0]
